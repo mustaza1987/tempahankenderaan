@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:geocoding/geocoding.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 
 class PetaPilihLokasi extends StatefulWidget {
   const PetaPilihLokasi({super.key});
@@ -14,33 +15,36 @@ class PetaPilihLokasi extends StatefulWidget {
 
 class _PetaPilihLokasiState extends State<PetaPilihLokasi> {
   GoogleMapController? mapController;
-  LatLng? selectedLocation; // Untuk mobile
-  latlong.LatLng? selectedLocationWeb; // Untuk web
+  LatLng? selectedLocation;
+  latlong.LatLng? selectedLocationWeb;
   String selectedAddress = "";
 
   Future<void> _getLocation(double lat, double lng) async {
+    if (kIsWeb) {
+      // Web fallback
+      setState(() {
+        selectedLocationWeb = latlong.LatLng(lat, lng);
+        selectedAddress =
+            "Lat: ${lat.toStringAsFixed(5)}, Lng: ${lng.toStringAsFixed(5)}";
+      });
+      return;
+    }
+
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
         setState(() {
-          if (kIsWeb) {
-            selectedLocationWeb = latlong.LatLng(lat, lng);
-          } else {
-            selectedLocation = LatLng(lat, lng);
-          }
-
+          selectedLocation = LatLng(lat, lng);
           selectedAddress =
-              "${place.name ?? ''}, ${place.street ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}"
-                  .replaceAll(RegExp(r'(, )+'), ', ')
-                  .trim()
-                  .replaceAll(RegExp(r'^,+|,+$'), '');
+              "${place.name}, ${place.street}, ${place.locality}, ${place.administrativeArea}";
         });
       }
     } catch (e) {
       debugPrint("Geocoding error: $e");
       setState(() {
-        selectedAddress = "Alamat tidak dapat ditentukan.";
+        selectedAddress =
+            "Lat: ${lat.toStringAsFixed(5)}, Lng: ${lng.toStringAsFixed(5)}";
       });
     }
   }
@@ -74,7 +78,7 @@ class _PetaPilihLokasiState extends State<PetaPilihLokasi> {
         children: [
           GoogleMap(
             initialCameraPosition: const CameraPosition(
-              target: LatLng(3.1390, 101.6869), // Kuala Lumpur
+              target: LatLng(3.1390, 101.6869),
               zoom: 14,
             ),
             onMapCreated: (controller) => mapController = controller,
@@ -125,8 +129,8 @@ class _PetaPilihLokasiState extends State<PetaPilihLokasi> {
         ),
         children: [
           fm.TileLayer(
-            urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            subdomains: const ['a', 'b', 'c'],
+            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            tileProvider: CancellableNetworkTileProvider(),
           ),
           fm.MarkerLayer(
             markers: selectedLocationWeb != null

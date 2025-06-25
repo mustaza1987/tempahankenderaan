@@ -5,7 +5,7 @@ import 'package:tempahkenderaan/pengurusan_page.dart';
 import 'package:tempahkenderaan/pentadbir_page.dart';
 import 'package:tempahkenderaan/penyedia_page.dart';
 import 'package:tempahkenderaan/penyelia_page.dart';
-import 'login_page.dart';
+import 'view/login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Sistem Tempahan Kenderaan',
       debugShowCheckedModeBanner: false, // ✅ Buang banner debug
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(fontFamily: 'Schyler', primarySwatch: Colors.blue),
       home: const LoginPage(),
       routes: {
         '/penyedia': (context) => const PenyediaPage(),
