@@ -458,13 +458,13 @@ class _DialogLulusState extends State<DialogLulus> {
   Future<void> fetchData() async {
     final resPemandu = await http.get(
       Uri.parse(
-        'http://10.20.18.184/kenderaanALL/flutapi/get_pemandu.php?id_bahagian=${widget.idBahagian}',
+        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_pemandu.php?id_bahagian=${widget.idBahagian}',
       ),
     );
 
     final resKenderaan = await http.get(
       Uri.parse(
-        'http://10.20.18.184/kenderaanALL/flutapi/get_kenderaan.php?id_bahagian=${widget.idBahagian}',
+        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_kenderaan.php?id_bahagian=${widget.idBahagian}',
       ),
     );
 
@@ -490,7 +490,7 @@ class _DialogLulusState extends State<DialogLulus> {
 
     final res = await http.post(
       Uri.parse(
-        'http://10.20.18.184/kenderaanALL/flutapi/kemaskini_status.php',
+        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/kemaskini_status.php',
       ),
       body: {
         'id_tempahan': widget.idTempahan.toString(),
@@ -577,7 +577,7 @@ class _RingkasanPieChartState extends State<_RingkasanPieChart> {
   Future<void> fetchRingkasan() async {
     final response = await http.get(
       Uri.parse(
-        'http://10.20.18.184/kenderaanALL/flutapi/get_ringkasan_status.php?id_bahagian=${widget.idBahagian}',
+        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_ringkasan_status.php?id_bahagian=${widget.idBahagian}',
       ),
     );
 

@@ -56,7 +56,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
             TextButton(
               child: Text(
                 date != null
-                    ? DateFormat('dd/MM/yyyy').format(date)
+                    ? "${date.day}/${date.month}/${date.year}"
                     : "Pilih Tarikh",
               ),
               onPressed: () async {
@@ -113,9 +113,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
     )) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            "Tempahan perlu dibuat sekurang-kurangnya 3 hari lebih awal.",
-          ),
+          content: Text("Tempahan perlu dibuat 3 hari dari tarikh permohonan."),
         ),
       );
       return;
@@ -244,6 +242,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
           children: [
             TextFormField(
               controller: destinasiController,
+              keyboardType: TextInputType.text,
               decoration: const InputDecoration(
                 labelText: "Destinasi",
                 hintText: "Contoh: Pejabat SUK Perak, Ipoh",
@@ -260,13 +259,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
               controller: jumOrangController,
               decoration: const InputDecoration(labelText: "Jumlah Orang"),
               keyboardType: TextInputType.number,
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Isi jumlah orang';
-                final num = int.tryParse(v);
-                if (num == null || num < 1)
-                  return 'Jumlah orang mesti sekurang-kurangnya 1';
-                return null;
-              },
+              validator: (v) => v!.isEmpty ? 'Isi jumlah orang' : null,
             ),
             TextFormField(
               controller: tempatLaporController,
@@ -289,7 +282,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
             ),
             DropdownButtonFormField<int>(
               value: selectedJenisAset,
-              decoration: const InputDecoration(labelText: "Jenis Aset"),
+              decoration: const InputDecoration(labelText: "Jenis Kenderaan"),
               items: jenisAsetList.map((item) {
                 return DropdownMenuItem<int>(
                   value: item['id'] as int,
