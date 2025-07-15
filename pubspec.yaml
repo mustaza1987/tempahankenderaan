@@ -1,4 +1,4 @@
-name: tempahkenderaan
+name: eMobilSUK
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -26,6 +26,15 @@ dependencies:
   pdf: ^3.10.0
   printing: ^5.11.0
   google_fonts: ^6.0.0
+  animations: ^2.0.7
+  share_plus: ^7.2.1 
+  intl: ^0.18.1
+  crypto: ^3.0.3
+  connectivity_plus: ^5.0.2 
+  fl_chart: ^0.64.0
+  flutter_launcher_icons: ^0.13.1
+
+
   
 
   
@@ -38,9 +47,18 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/iconemobil.png"
+
+    
 
   
-  flutter_lints: ^5.0.0
+  
 
 
 flutter:
@@ -54,7 +72,9 @@ flutter:
   assets:
      - assets/booking.png
      - assets/home.png
-    
+     - assets/car.png
+     - assets/emobil.png
+     - assets/carm.png
      - assets/fonts/NotoSans-Regular.ttf
 
     

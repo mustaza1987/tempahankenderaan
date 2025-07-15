@@ -35,7 +35,7 @@ class _SejarahTempahanPageState extends State<SejarahTempahanPage> {
     try {
       final response = await http.get(
         Uri.parse(
-          "http://10.20.18.184/kenderaanALL/flutapi/sejarah_tempahan.php?id_pengguna=${widget.idPengguna}",
+          "https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/sejarah_tempahan.php?id_pengguna=${widget.idPengguna}",
         ),
       );
 
@@ -292,6 +292,44 @@ class _SejarahTempahanPageState extends State<SejarahTempahanPage> {
   }
 }
 
+String formatValue(dynamic value) {
+  if (value is String) {
+    try {
+      final date = DateTime.parse(value);
+      return DateFormat("dd MMM yyyy, hh:mm a").format(date);
+    } catch (_) {
+      return value;
+    }
+  }
+  return value.toString();
+}
+
+String formatKey(String key) {
+  switch (key) {
+    case 'tarikh_bertolak':
+      return 'Tarikh Bertolak';
+    case 'masa_bertolak':
+      return 'Masa Bertolak';
+    case 'tarikh_balik':
+      return 'Tarikh Balik';
+    case 'masa_balik':
+      return 'Masa Balik';
+    case 'status_tempahan':
+      return 'Status Tempahan';
+    case 'destinasi':
+      return 'Destinasi';
+    default:
+      return key
+          .replaceAll('_', ' ')
+          .splitMapJoin(
+            RegExp(r'\w+'),
+            onMatch: (m) =>
+                "${m.group(0)![0].toUpperCase()}${m.group(0)!.substring(1)}",
+            onNonMatch: (n) => n,
+          );
+  }
+}
+
 class PaparanTempahanPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
@@ -305,21 +343,38 @@ class PaparanTempahanPage extends StatelessWidget {
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: item.entries.map((e) {
-              return pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 4),
-                child: pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      '${e.key}: ',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            children: [
+              for (var key in [
+                'destinasi',
+                'tujuan',
+                'tarikh_bertolak',
+                'masa_bertolak',
+                'tarikh_balik',
+                'masa_balik',
+                'status_tempahan',
+                'tempat_lapor_diri',
+                'nama_pemandu',
+                'no_kenderaan',
+                'jenis_aset',
+              ])
+                if (item.containsKey(key))
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.SizedBox(
+                          width: 140,
+                          child: pw.Text(
+                            "${formatKey(key)}:",
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                          ),
+                        ),
+                        pw.Expanded(child: pw.Text(formatValue(item[key]))),
+                      ],
                     ),
-                    pw.Expanded(child: pw.Text(e.value.toString())),
-                  ],
-                ),
-              );
-            }).toList(),
+                  ),
+            ],
           );
         },
       ),
@@ -346,21 +401,38 @@ class PaparanTempahanPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
-          children: item.entries.map((e) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "${e.key}: ",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+          children: [
+            for (var key in [
+              'destinasi',
+              'tujuan',
+              'tarikh_bertolak',
+              'masa_bertolak',
+              'tarikh_balik',
+              'masa_balik',
+              'status_tempahan',
+              'tempat_lapor_diri',
+              'nama_pemandu',
+              'no_kenderaan',
+              'jenis_aset',
+            ])
+              if (item.containsKey(key))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 140,
+                        child: Text(
+                          "${formatKey(key)}:",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Expanded(child: Text(formatValue(item[key]))),
+                    ],
                   ),
-                  Expanded(child: Text(e.value.toString())),
-                ],
-              ),
-            );
-          }).toList(),
+                ),
+          ],
         ),
       ),
     );

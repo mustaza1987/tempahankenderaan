@@ -1,14 +1,8 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:flutter_map/flutter_map.dart' as fm;
-import 'package:latlong2/latlong.dart' as latlong;
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-import 'package:tempahkenderaan/pengguna_tempahan_page.dart';
-import 'peta_pilih_lokasi.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:eMobilSUK/pengguna/pengguna_tempahan_page.dart';
 
 class TempahKenderaanPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -35,8 +29,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
 
   int? selectedJenisAset;
 
-  double? destinasiLat;
-  double? destinasiLng;
+  bool isSubmitting = false;
 
   final List<Map<String, dynamic>> jenisAsetList = [
     {"id": 1, "nama": "Kereta"},
@@ -46,8 +39,6 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
     {"id": 7, "nama": "Pacuan Empat Roda"},
     {"id": 8, "nama": "MPV"},
   ];
-
-  bool isSubmitting = false;
 
   Widget buildDateTimePicker({
     required String label,
@@ -65,7 +56,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
             TextButton(
               child: Text(
                 date != null
-                    ? "${date.day}/${date.month}/${date.year}"
+                    ? DateFormat('dd/MM/yyyy').format(date)
                     : "Pilih Tarikh",
               ),
               onPressed: () async {
@@ -100,21 +91,26 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
         masaBertolak == null ||
         tarikhBalik == null ||
         masaBalik == null ||
-        selectedJenisAset == null ||
-        destinasiLat == null ||
-        destinasiLng == null) {
+        selectedJenisAset == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            "Sila isi semua maklumat termasuk lokasi destinasi dan tarikh/masa.",
-          ),
+          content: Text("Sila isi semua maklumat termasuk tarikh dan masa."),
         ),
       );
       return;
     }
 
-    final difference = tarikhBertolak!.difference(DateTime.now()).inDays;
-    if (difference < 3) {
+    final bertolakDateTime = DateTime(
+      tarikhBertolak!.year,
+      tarikhBertolak!.month,
+      tarikhBertolak!.day,
+      masaBertolak!.hour,
+      masaBertolak!.minute,
+    );
+
+    if (bertolakDateTime.isBefore(
+      DateTime.now().add(const Duration(days: 3)),
+    )) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -124,10 +120,27 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
       );
       return;
     }
+
     if (tarikhBalik!.isBefore(tarikhBertolak!)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Tarikh balik tidak boleh sebelum tarikh bertolak."),
+        ),
+      );
+      return;
+    }
+    final balikDateTime = DateTime(
+      tarikhBalik!.year,
+      tarikhBalik!.month,
+      tarikhBalik!.day,
+      masaBalik!.hour,
+      masaBalik!.minute,
+    );
+
+    if (balikDateTime.isBefore(bertolakDateTime)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Tarikh/massa balik tidak boleh sebelum bertolak."),
         ),
       );
       return;
@@ -144,8 +157,8 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
       "emel": widget.user['emel'],
       "id_jenis_aset": selectedJenisAset,
       "destinasi": destinasiController.text,
-      "lat_destinasi": destinasiLat,
-      "lng_destinasi": destinasiLng,
+      "lat_destinasi": null,
+      "lng_destinasi": null,
       "tujuan": tujuanController.text,
       "jum_orang": int.tryParse(jumOrangController.text) ?? 1,
       "tempat_lapor_diri": tempatLaporController.text,
@@ -155,11 +168,31 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
       "masa_balik": masaBalik!.format(context),
       "catatan_pemohon": catatanController.text,
     };
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Sahkan Tempahan"),
+        content: const Text("Anda pasti ingin menghantar tempahan ini?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Hantar"),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
 
     setState(() => isSubmitting = true);
 
     final response = await http.post(
-      Uri.parse('http://10.20.18.184/kenderaanALL/flutapi/tempahan.php'),
+      Uri.parse(
+        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/tempahan.php',
+      ),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(data),
     );
@@ -211,24 +244,11 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
           children: [
             TextFormField(
               controller: destinasiController,
-              readOnly: true,
               decoration: const InputDecoration(
                 labelText: "Destinasi",
-                suffixIcon: Icon(Icons.map),
+                hintText: "Contoh: Pejabat SUK Perak, Ipoh",
+                suffixIcon: Icon(Icons.location_on),
               ),
-              onTap: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PetaPilihLokasi()),
-                );
-                if (result != null && result is Map<String, dynamic>) {
-                  setState(() {
-                    destinasiController.text = result['address'] ?? '';
-                    destinasiLat = result['lat'];
-                    destinasiLng = result['lng'];
-                  });
-                }
-              },
               validator: (v) => v!.isEmpty ? 'Isi destinasi' : null,
             ),
             TextFormField(
@@ -240,7 +260,13 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
               controller: jumOrangController,
               decoration: const InputDecoration(labelText: "Jumlah Orang"),
               keyboardType: TextInputType.number,
-              validator: (v) => v!.isEmpty ? 'Isi jumlah orang' : null,
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Isi jumlah orang';
+                final num = int.tryParse(v);
+                if (num == null || num < 1)
+                  return 'Jumlah orang mesti sekurang-kurangnya 1';
+                return null;
+              },
             ),
             TextFormField(
               controller: tempatLaporController,

@@ -3,12 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:eMobilSUK/pengguna/pengguna_tempahan_page.dart';
+
+import 'package:eMobilSUK/pemandu/pemandu_page.dart';
+import 'package:crypto/crypto.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
+}
+
+Future<bool> isConnectedToInternet() async {
+  final connectivityResult = await Connectivity().checkConnectivity();
+  return connectivityResult != ConnectivityResult.none;
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -57,6 +67,14 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // 🔌 Periksa sambungan Internet
+    if (!await isConnectedToInternet()) {
+      setState(() {
+        errorMessage = 'Tiada sambungan Internet. Sila cuba semula.';
+      });
+      return;
+    }
+
     setState(() {
       errorMessage = null;
     });
@@ -76,16 +94,23 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     try {
+      final noKp = nokpController.text.trim();
+      final plainPassword = katalaluanController.text.trim();
+
       final response = await http.post(
-        Uri.parse('http://10.20.18.184/kenderaanALL/flutapi/loginnew.php'),
+        Uri.parse(
+          'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/loginnew.php',
+        ),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'no_kad_pengenalan': nokpController.text.trim(),
-          'katalaluan': katalaluanController.text,
+          'no_kad_pengenalan': noKp,
+          'katalaluan': plainPassword,
         }),
       );
 
       print('Response body: ${response.body}');
+      print('NO_KP = $noKp');
+      print('KATALALUAN = $plainPassword');
 
       final result = jsonDecode(response.body);
 
@@ -97,12 +122,17 @@ class _LoginPageState extends State<LoginPage> {
         final idPeranan = user['id_peranan'].toString();
 
         switch (idPeranan) {
-          case '1':
+          case '2':
             Navigator.pushReplacementNamed(context, '/penyedia');
             break;
-          case '2':
-            Navigator.pushReplacementNamed(context, '/penyelia');
+          case '1':
+            Navigator.pushReplacementNamed(
+              context,
+              '/penyelia',
+              arguments: user, // ✅ Hantar data user ke route
+            );
             break;
+
           case '3':
             Navigator.pushReplacementNamed(context, '/pengurusan');
             break;
@@ -117,7 +147,11 @@ class _LoginPageState extends State<LoginPage> {
             );
             break;
           case '6':
-            Navigator.pushReplacementNamed(context, '/pemandu');
+            Navigator.pushReplacementNamed(
+              context,
+              '/pemandu',
+              arguments: user,
+            );
             break;
           default:
             setState(() => errorMessage = 'Peranan tidak dikenali.');
@@ -175,12 +209,12 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
-                  children: [Image.asset('assets/home.png', height: 80)],
+                  children: [Image.asset('assets/carm.png', height: 80)],
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
-                'Selamat Datang ke e-Tempahan Kenderaan',
+                'Selamat Datang ke eMobil SUK',
                 style: TextStyle(color: Colors.black, fontSize: 18),
                 textAlign: TextAlign.left,
               ),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:tempahkenderaan/pemandu_page.dart';
-import 'package:tempahkenderaan/pengguna_tempahan_page.dart';
-import 'package:tempahkenderaan/pengurusan_page.dart';
-import 'package:tempahkenderaan/pentadbir_page.dart';
-import 'package:tempahkenderaan/penyedia_page.dart';
-import 'package:tempahkenderaan/penyelia_page.dart';
+
+import 'package:eMobilSUK/pengguna/pengguna_tempahan_page.dart';
+import 'package:eMobilSUK/pengurusan_page.dart';
 import 'view/login_page.dart';
+import 'package:eMobilSUK/pemandu/pemandu_page.dart';
+import 'adminbahagian/penyelia_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,18 +21,37 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(fontFamily: 'Schyler', primarySwatch: Colors.blue),
       home: const LoginPage(),
       routes: {
-        '/penyedia': (context) => const PenyediaPage(),
-        '/penyelia': (context) => const PenyeliaPage(),
-        '/pengurusan': (context) => const PengurusanPage(),
-        '/pentadbir': (context) => const PentadbirPage(),
-        '/pengguna_tempahan': (context) {
-          final user =
-              ModalRoute.of(context)!.settings.arguments
-                  as Map<String, dynamic>;
-          return PenggunaTempahanPage(user: user);
+        '/penyelia': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is Map<String, dynamic>) {
+            return PenyeliaPage(penyelia: args);
+          } else {
+            return const Scaffold(
+              body: Center(child: Text("Ralat: Data penyelia tidak dijumpai")),
+            );
+          }
         },
-
-        '/pemandu': (context) => const PemanduPage(),
+        '/pengurusan': (context) => const PengurusanPage(),
+        '/pengguna_tempahan': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is Map<String, dynamic>) {
+            return PenggunaTempahanPage(user: args);
+          } else {
+            return const Scaffold(
+              body: Center(child: Text("Ralat: Data pengguna tidak dijumpai")),
+            );
+          }
+        },
+        '/pemandu': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is Map<String, dynamic>) {
+            return PemanduPage(pemandu: args);
+          } else {
+            return const Scaffold(
+              body: Center(child: Text("Ralat: Data pemandu tidak dijumpai")),
+            );
+          }
+        },
       },
     );
   }
