@@ -53,7 +53,7 @@ class _PemanduPageState extends State<PemanduPage> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://10.20.18.184/kenderaanALL/flutapi/semak_tempahan_baru.php?id_pengguna=${widget.pemandu['id_pengguna']}',
+          'https://kendaraansuk.perak.gov.my/kenderaanALL/flutapi/semak_tempahan_baru.php?id_pengguna=${widget.pemandu['id_pengguna']}',
         ),
       );
 

@@ -24,6 +24,7 @@ class ButiranTempahanPenyelia extends StatelessWidget {
                   _info("Pemohon", tempahan['nama_pemohon']),
                   _info("Bahagian", tempahan['bahagian']),
                   _info("Destinasi", tempahan['destinasi']),
+                  _info("Tujuan", tempahan['tujuan']),
                   _info(
                     "Tarikh Bertolak",
                     formatTarikh(tempahan['tarikh_bertolak']),

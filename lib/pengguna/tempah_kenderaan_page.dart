@@ -113,7 +113,9 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
     )) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Tempahan perlu dibuat 3 hari dari tarikh permohonan."),
+          content: Text(
+            "Sila pastikan anda membuat tempahan 3 hari sebelum tarikh bertolak.",
+          ),
         ),
       );
       return;

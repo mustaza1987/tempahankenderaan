@@ -214,7 +214,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Selamat Datang ke eMobil SUK',
+                'Selamat Datang ke SUKRide',
                 style: TextStyle(color: Colors.black, fontSize: 18),
                 textAlign: TextAlign.left,
               ),
