@@ -3,11 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:eMobilSUK/pengguna/pengguna_tempahan_page.dart';
-
-import 'package:eMobilSUK/pemandu/pemandu_page.dart';
-import 'package:crypto/crypto.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/services.dart'; // untuk input formatter
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool rememberMe = false;
   bool showPassword = false;
+  bool isLoading = false;
   String? errorMessage;
 
   @override
@@ -66,8 +64,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // 🔌 Periksa sambungan Internet
     if (!await isConnectedToInternet()) {
       setState(() {
         errorMessage = 'Tiada sambungan Internet. Sila cuba semula.';
@@ -77,21 +73,8 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() {
       errorMessage = null;
+      isLoading = true;
     });
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Sila tunggu...'),
-          ],
-        ),
-      ),
-    );
 
     try {
       final noKp = nokpController.text.trim();
@@ -108,13 +91,7 @@ class _LoginPageState extends State<LoginPage> {
         }),
       );
 
-      print('Response body: ${response.body}');
-      print('NO_KP = $noKp');
-      print('KATALALUAN = $plainPassword');
-
       final result = jsonDecode(response.body);
-
-      Navigator.of(context).pop();
 
       if (result['status'] == 'success') {
         await saveCredentials();
@@ -122,17 +99,16 @@ class _LoginPageState extends State<LoginPage> {
         final idPeranan = user['id_peranan'].toString();
 
         switch (idPeranan) {
-          case '2':
-            Navigator.pushReplacementNamed(context, '/penyedia');
-            break;
           case '1':
             Navigator.pushReplacementNamed(
               context,
               '/penyelia',
-              arguments: user, // ✅ Hantar data user ke route
+              arguments: user,
             );
             break;
-
+          case '2':
+            Navigator.pushReplacementNamed(context, '/penyedia');
+            break;
           case '3':
             Navigator.pushReplacementNamed(context, '/pengurusan');
             break;
@@ -160,36 +136,18 @@ class _LoginPageState extends State<LoginPage> {
         setState(() => errorMessage = result['message']);
       }
     } catch (e) {
-      Navigator.of(context).pop();
       setState(() {
         errorMessage = 'Ralat sambungan atau respons bukan JSON.\n$e';
       });
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 
-  void launchLupaKatalaluan() async {
-    final url = Uri.parse(
-      'https://tempahanfasiliti.perak.gov.my/fasiliti/index.php',
-    );
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Gagal buka pautan.')));
-    }
-  }
-
-  void launchDaftarPengguna() async {
-    final url = Uri.parse(
-      'https://tempahanfasiliti.perak.gov.my/fasiliti/index.php',
-    );
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal buka pautan daftar.')),
-      );
+  Future<void> launchExternalLink(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw 'Pautan $url Gagal Dibuka';
     }
   }
 
@@ -202,22 +160,19 @@ class _LoginPageState extends State<LoginPage> {
           key: _formKey,
           child: ListView(
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [Image.asset('assets/carm.png', height: 80)],
-                ),
+              const SizedBox(height: 40),
+              Align(
+                alignment: Alignment.topLeft,
+                child: Image.asset('assets/carm.png', height: 80),
               ),
+
               const SizedBox(height: 16),
               const Text(
-                'Selamat Datang ke SUKRide',
+                'Selamat Datang ke eMobilSUK',
                 style: TextStyle(color: Colors.black, fontSize: 18),
                 textAlign: TextAlign.left,
               ),
+              const SizedBox(height: 8),
               const Text(
                 'Sila log masuk guna no kad pengenalan dan katalaluan yang didaftar di sistem tempahan fasiliti',
                 style: TextStyle(color: Colors.black45, fontSize: 12),
@@ -227,6 +182,7 @@ class _LoginPageState extends State<LoginPage> {
               TextFormField(
                 controller: nokpController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(
                   labelText: 'No Kad Pengenalan',
                   border: OutlineInputBorder(),
@@ -245,7 +201,6 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   labelText: 'Katalaluan',
                   border: const OutlineInputBorder(),
-
                   suffixIcon: IconButton(
                     icon: Icon(
                       showPassword ? Icons.visibility_off : Icons.visibility,
@@ -268,7 +223,9 @@ class _LoginPageState extends State<LoginPage> {
                   const Text('Ingat Saya'),
                   const Spacer(),
                   TextButton(
-                    onPressed: launchLupaKatalaluan,
+                    onPressed: () => launchExternalLink(
+                      'https://tempahanfasiliti.perak.gov.my/fasiliti/index.php',
+                    ),
                     child: const Text('Lupa Katalaluan?'),
                   ),
                 ],
@@ -277,11 +234,22 @@ class _LoginPageState extends State<LoginPage> {
                 Text(errorMessage!, style: const TextStyle(color: Colors.red)),
                 const SizedBox(height: 8),
               ],
-              ElevatedButton(onPressed: login, child: const Text('Log Masuk')),
+              ElevatedButton(
+                onPressed: isLoading ? null : login,
+                child: isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Log Masuk'),
+              ),
               const SizedBox(height: 16),
               Center(
                 child: TextButton(
-                  onPressed: launchDaftarPengguna,
+                  onPressed: () => launchExternalLink(
+                    'https://tempahanfasiliti.perak.gov.my/fasiliti/index.php',
+                  ),
                   child: const Text('Belum ada akaun? Daftar di sini'),
                 ),
               ),

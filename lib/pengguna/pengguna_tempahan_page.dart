@@ -9,6 +9,7 @@ import 'package:eMobilSUK/profil_pengguna.dart';
 import 'sejarah_tempahan.dart';
 import 'tempah_kenderaan_page.dart';
 import 'package:eMobilSUK/papar_map.dart';
+import 'dart:ui';
 
 class PenggunaTempahanPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -301,7 +302,7 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
                     Expanded(
                       child: Text(
                         _senaraiTempahan.isNotEmpty
-                            ? '${_senaraiTempahan.length} tempahan sedang diproses (sentuh untuk lihat)'
+                            ? 'Terdapat ${_senaraiTempahan.length} tempahan sedang diproses (sentuh untuk lihat)'
                             : 'Tiada tempahan sedang diproses.',
                         style: GoogleFonts.poppins(),
                       ),
@@ -319,6 +320,15 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
             else if (_showSenaraiTempahan && _senaraiTempahan.isNotEmpty)
               ..._senaraiTempahan.map((item) {
                 return Card(
+                  color: item['id_status_tempahan'].toString() == '1'
+                      ? Colors
+                            .orange
+                            .shade50 // latar oren lembut jika status Batal
+                      : item['id_status_tempahan'].toString() == '6'
+                      ? Colors
+                            .grey
+                            .shade400 // latar oren lembut jika status Baru
+                      : Colors.white,
                   margin: const EdgeInsets.symmetric(vertical: 6),
                   child: Padding(
                     padding: const EdgeInsets.all(12.0),
@@ -331,6 +341,7 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
                               Icons.directions_car,
                               color: getStatusColor(item['id_status_tempahan']),
                             ),
+
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -455,7 +466,7 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
                 );
               },
               backgroundColor: Colors.blue,
-              elevation: 2,
+              elevation: 1,
               shape: const CircleBorder(),
               child: const Icon(Icons.car_crash_rounded, size: 35),
             ),
@@ -475,7 +486,7 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildNavIcon(Icons.home, 'Menu', 0),
+                    _buildNavIcon(Icons.home, 'Utama', 0),
                     _buildNavIcon(Icons.history, 'Sejarah', 1),
                     const SizedBox(width: 20),
                     _buildNavIcon(Icons.person, 'Profil', 3),

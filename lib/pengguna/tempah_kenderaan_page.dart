@@ -51,36 +51,74 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        Row(
-          children: [
-            TextButton(
-              child: Text(
-                date != null
-                    ? "${date.day}/${date.month}/${date.year}"
-                    : "Pilih Tarikh",
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade400),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade200,
+                blurRadius: 6,
+                offset: const Offset(2, 2),
               ),
-              onPressed: () async {
-                DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) onDatePicked(picked);
-              },
-            ),
-            TextButton(
-              child: Text(time != null ? time.format(context) : "Pilih Masa"),
-              onPressed: () async {
-                TimeOfDay? picked = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                if (picked != null) onTimePicked(picked);
-              },
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: date ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) onDatePicked(picked);
+                  },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        date != null
+                            ? "${date.day}/${date.month}/${date.year}"
+                            : "Pilih Tarikh",
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    TimeOfDay? picked = await showTimePicker(
+                      context: context,
+                      initialTime: time ?? TimeOfDay.now(),
+                    );
+                    if (picked != null) onTimePicked(picked);
+                  },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        time != null ? time.format(context) : "Pilih Masa",
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -140,7 +178,7 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
     if (balikDateTime.isBefore(bertolakDateTime)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Tarikh/massa balik tidak boleh sebelum bertolak."),
+          content: Text("Tarikh/masa balik tidak boleh sebelum bertolak."),
         ),
       );
       return;
@@ -249,23 +287,44 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
                 labelText: "Destinasi",
                 hintText: "Contoh: Pejabat SUK Perak, Ipoh",
                 suffixIcon: Icon(Icons.location_on),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(),
               ),
               validator: (v) => v!.isEmpty ? 'Isi destinasi' : null,
             ),
+            const SizedBox(height: 10),
             TextFormField(
               controller: tujuanController,
-              decoration: const InputDecoration(labelText: "Tujuan"),
+              decoration: const InputDecoration(
+                labelText: "Tujuan",
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(),
+              ),
               validator: (v) => v!.isEmpty ? 'Isi tujuan' : null,
             ),
+            const SizedBox(height: 10),
             TextFormField(
               controller: jumOrangController,
-              decoration: const InputDecoration(labelText: "Jumlah Orang"),
+              decoration: const InputDecoration(
+                labelText: "Jumlah Orang",
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(),
+              ),
               keyboardType: TextInputType.number,
               validator: (v) => v!.isEmpty ? 'Isi jumlah orang' : null,
             ),
+            const SizedBox(height: 10),
             TextFormField(
               controller: tempatLaporController,
-              decoration: const InputDecoration(labelText: "Tempat Lapor Diri"),
+              decoration: const InputDecoration(
+                labelText: "Tempat Lapor Diri",
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 16),
             buildDateTimePicker(
@@ -284,7 +343,12 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
             ),
             DropdownButtonFormField<int>(
               value: selectedJenisAset,
-              decoration: const InputDecoration(labelText: "Jenis Kenderaan"),
+              decoration: const InputDecoration(
+                labelText: "Jenis Kenderaan",
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(),
+              ),
               items: jenisAsetList.map((item) {
                 return DropdownMenuItem<int>(
                   value: item['id'] as int,
@@ -294,10 +358,14 @@ class _TempahKenderaanPageState extends State<TempahKenderaanPage> {
               onChanged: (val) => setState(() => selectedJenisAset = val),
               validator: (val) => val == null ? 'Pilih jenis aset' : null,
             ),
+            const SizedBox(height: 10),
             TextFormField(
               controller: catatanController,
               decoration: const InputDecoration(
-                labelText: "Catatan (jika ada)",
+                labelText: "Catatan (Jika Ada)",
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 20),
