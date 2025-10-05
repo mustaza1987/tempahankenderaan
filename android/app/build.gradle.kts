@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.tempahkenderaan"
+    namespace = "my.gov.onegovappstore.perak.tempahkenderaan"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.tempahkenderaan"
+        applicationId = "my.gov.onegovappstore.perak.tempahkenderaan"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

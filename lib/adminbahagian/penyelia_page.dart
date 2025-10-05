@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:eMobilSUK/profil_pengguna.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:tempahkenderaan/profil_pengguna.dart';
 import 'butiran_tempahan_penyelia.dart';
+import 'sejarah_tempahan_admin.dart';
 
 class PenyeliaPage extends StatefulWidget {
   final Map<String, dynamic> penyelia;
@@ -21,366 +23,355 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
   List<dynamic> senaraiTempahan = [];
   List<dynamic> senaraiBahagian = [];
   String? selectedBahagian;
+  Timer? _refreshTimer;
+  int _refreshCountdown = 100; // 5 menit dalam detik
 
   @override
   void initState() {
     super.initState();
-    fetchTempahan();
-    fetchBahagian();
+    _loadInitialData();
+    _startRefreshTimer();
   }
 
-  Future<void> fetchBahagian() async {
-    final response = await http.get(
-      Uri.parse(
-        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_bahagian.php',
-      ),
-    );
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
-    if (response.statusCode == 200) {
-      final result = jsonDecode(response.body);
+  void _startRefreshTimer() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
-        senaraiBahagian = result['senarai'] ?? [];
+        if (_refreshCountdown > 0) {
+          _refreshCountdown--;
+        } else {
+          _refreshCountdown = 300;
+          _refreshData();
+        }
       });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal ambil senarai bahagian')),
-      );
+    });
+  }
+
+  Future<void> _refreshData() async {
+    try {
+      await fetchTempahan();
+      _showSuccessSnackbar('Data telah dikemas kini');
+    } catch (e) {
+      _showErrorSnackbar('Gagal mengemas kini data: $e');
     }
   }
 
-  Future<void> semakTempahan(int idTempahan, String status) async {
-    final response = await http.post(
-      Uri.parse(
-        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/kemaskini_status.php',
-      ),
-      body: {'id_tempahan': idTempahan.toString(), 'status': status},
-    );
+  Future<void> _loadInitialData() async {
+    try {
+      await Future.wait([fetchTempahan(), fetchBahagian()]);
+    } catch (e) {
+      _showErrorSnackbar('Gagal memuat data awal: $e');
+    }
+  }
 
-    if (response.statusCode == 200) {
-      final result = jsonDecode(response.body);
-      if (result['berjaya'] == true) {
-        String mesej;
+  Future<void> fetchBahagian() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+              'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_bahagian.php',
+            ),
+          )
+          .timeout(const Duration(seconds: 30));
 
-        if (status == 'bkp') {
-          mesej = 'Tempahan dipanjangkan ke BKP';
-        } else if (status == 'tolak') {
-          mesej = 'Tempahan tidak diluluskan';
-        } else {
-          mesej = 'Tempahan dikemaskini sebagai $status';
-        }
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(mesej)));
-
-        fetchTempahan();
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        setState(() {
+          senaraiBahagian = result['senarai'] ?? [];
+        });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal kemaskini status tempahan')),
-        );
+        throw Exception('HTTP ${response.statusCode}');
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ralat semasa menghantar permintaan')),
-      );
+    } catch (e) {
+      _showErrorSnackbar('Gagal memuat senarai bahagian: $e');
+      rethrow;
     }
   }
 
   Future<void> fetchTempahan() async {
-    final idBahagian = widget.penyelia['id_bahagian'];
-    final response = await http.get(
-      Uri.parse(
-        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/semak_tempahan.php?id_bahagian=$idBahagian',
-      ),
-    );
-    if (response.statusCode == 200) {
-      final result = jsonDecode(response.body);
-      setState(() {
-        senaraiTempahan = result['senarai'] ?? [];
-        isLoading = false;
-      });
-    } else {
+    setState(() => isLoading = true);
+
+    try {
+      final idBahagian = widget.penyelia['id_bahagian'];
+      final response = await http
+          .get(
+            Uri.parse(
+              'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/semak_tempahan.php?id_bahagian=$idBahagian',
+            ),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        setState(() {
+          senaraiTempahan = result['senarai'] ?? [];
+          isLoading = false;
+        });
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal ambil data tempahan')),
-      );
+      _showErrorSnackbar('Gagal memuat data tempahan: $e');
     }
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
   }
 
   void onBottomNavTapped(int index) {
-    if (index == 3) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("Log Keluar"),
-          content: const Text("Anda pasti ingin log keluar?"),
-          actions: [
-            TextButton(
-              child: const Text("Batal"),
-              onPressed: () => Navigator.pop(context),
-            ),
-            TextButton(
-              child: const Text("Ya"),
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/');
-              },
-            ),
-          ],
-        ),
-      );
+    if (index == 4) {
+      _showLogoutDialog();
       return;
     }
 
-    setState(() {
-      selectedIndex = index;
-    });
+    setState(() => selectedIndex = index);
   }
 
-  Widget _legendWarna(Color warna, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 12, height: 12, color: warna),
-        const SizedBox(width: 6),
-        Text(label, style: GoogleFonts.poppins()),
-      ],
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Log Keluar"),
+        content: const Text("Anda pasti ingin log keluar?"),
+        actions: [
+          TextButton(
+            child: const Text("Batal"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: const Text("Ya"),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Selamat Datang,',
+            style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.penyelia['nama'] ?? 'Penyelia',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCountdown(int seconds) {
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildBahagianCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.business, color: Colors.orange),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${widget.penyelia['nama_bahagian'] ?? '-'}',
+              style: GoogleFonts.poppins(fontSize: 16, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationCard(int jumlahBelum) {
+    if (jumlahBelum <= 0) return const SizedBox();
+
+    return GestureDetector(
+      onTap: () => setState(() => selectedIndex = 1),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.shade400),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.notification_important, color: Colors.red),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Terdapat $jumlahBelum tempahan baharu yang belum disemak!",
+                style: GoogleFonts.poppins(color: Colors.red.shade900),
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.red),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent() {
+    int jumlahLulus = senaraiTempahan
+        .where((e) => e['status_tempahan'] == 'Lulus')
+        .length;
+    int jumlahTolak = senaraiTempahan
+        .where((e) => e['status_tempahan'] == 'Tolak')
+        .length;
+    int jumlahBelum = senaraiTempahan
+        .where(
+          (e) => e['status_tempahan'] == null || e['status_tempahan'] == 'Baru',
+        )
+        .length;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListView(
+        children: [
+          const SizedBox(height: 20),
+          _buildWelcomeCard(),
+          const SizedBox(height: 20),
+          _buildBahagianCard(),
+          const SizedBox(height: 20),
+          _buildNotificationCard(jumlahBelum),
+          const SizedBox(height: 20),
+          _buildStatisticsCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Statistik Tempahan",
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(
+            height: 300,
+            child: _RingkasanBarChart(
+              idBahagian:
+                  int.tryParse(widget.penyelia['id_bahagian'].toString()) ?? 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTempahanList() {
+    if (senaraiTempahan.isEmpty) {
+      return const Center(child: Text("Tiada tempahan untuk disemak"));
+    }
+
+    return ListView.builder(
+      itemCount: senaraiTempahan.length,
+      itemBuilder: (context, index) {
+        final tempahan = senaraiTempahan[index];
+        final idBahagianPemohon = tempahan['id_bahagian']?.toString();
+        final bool showBkpOption = idBahagianPemohon != '1';
+
+        return Card(
+          color:
+              (tempahan['status_tempahan'] == null ||
+                  tempahan['status_tempahan'] == 'Baru')
+              ? const Color.fromARGB(255, 255, 252, 215)
+              : Colors.white,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ListTile(
+            title: Text(
+              tempahan['nama_pemohon'] ?? 'Tiada Nama',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              'Destinasi: ${tempahan['destinasi'] ?? '-'}\n'
+              'Status: ${tempahan['status_tempahan'] == null || tempahan['status_tempahan'] == 'Baru' ? 'Baru' : tempahan['status_tempahan']}\n'
+              'Bahagian: ${tempahan['bahagian'] ?? 'Tiada Bahagian'}',
+              style: GoogleFonts.poppins(),
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ButiranTempahanPenyelia(tempahan: tempahan),
+                ),
+              ).then((refresh) {
+                if (refresh == true) {
+                  fetchTempahan();
+                }
+              });
+            },
+          ),
+        );
+      },
     );
   }
 
   Widget getBodyContent() {
     switch (selectedIndex) {
       case 0:
-        int jumlahLulus = senaraiTempahan
-            .where((e) => e['status_tempahan'] == 'Lulus')
-            .length;
-        int jumlahTolak = senaraiTempahan
-            .where((e) => e['status_tempahan'] == 'Tolak')
-            .length;
-        int jumlahBelum = senaraiTempahan
-            .where(
-              (e) =>
-                  e['status_tempahan'] == null ||
-                  e['status_tempahan'] == 'Baru',
-            )
-            .length;
-
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: ListView(
-            children: [
-              const SizedBox(height: 20),
-              // Selamat datang
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Selamat Datang,',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.penyelia['nama'] ?? 'Penyelia',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Bahagian
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.business, color: Colors.orange),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '${widget.penyelia['nama_bahagian'] ?? '-'}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              if (jumlahBelum > 0)
-                GestureDetector(
-                  onTap: () => setState(() => selectedIndex = 1),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.shade400),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.notification_important,
-                          color: Colors.red,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            "Terdapat $jumlahBelum tempahan baharu yang belum disemak!",
-                            style: GoogleFonts.poppins(
-                              color: Colors.red.shade900,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: Colors.red),
-                      ],
-                    ),
-                  ),
-                ),
-
-              const SizedBox(height: 20),
-
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Statistik Tempahan",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(
-                      height: 300,
-                      child: _RingkasanPieChart(
-                        idBahagian:
-                            int.tryParse(
-                              widget.penyelia['id_bahagian'].toString(),
-                            ) ??
-                            0,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-
+        return _buildDashboardContent();
       case 1:
-        return ListView.builder(
-          itemCount: senaraiTempahan.length,
-          itemBuilder: (context, index) {
-            final tempahan = senaraiTempahan[index];
-            return Card(
-              color:
-                  (tempahan['status_tempahan'] == null ||
-                      tempahan['status_tempahan'] == 'Baru')
-                  ? Colors.yellow.shade50
-                  : Colors.white,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ListTile(
-                title: Text(
-                  tempahan['nama_pemohon'] ?? 'Tiada Nama',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Destinasi: ${tempahan['destinasi'] ?? '-'}\n'
-                  'Status: ${tempahan['status_tempahan'] == null || tempahan['status_tempahan'] == 'Baru' ? 'Baru' : tempahan['status_tempahan']}\n'
-                  'Bahagian: ${tempahan['bahagian'] ?? 'Tiada Bahagian'}',
-                  style: GoogleFonts.poppins(),
-                ),
-
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'lulus') {
-                      await showDialog(
-                        context: context,
-                        builder: (context) => DialogLulus(
-                          idTempahan:
-                              int.tryParse(
-                                tempahan['id_tempahan'].toString(),
-                              ) ??
-                              0,
-                          idBahagian:
-                              int.tryParse(
-                                tempahan['id_bahagian'].toString(),
-                              ) ??
-                              0,
-                          idPengguna:
-                              int.tryParse(
-                                widget.penyelia['id_pengguna'].toString(),
-                              ) ??
-                              0,
-                          onSelesai: fetchTempahan,
-                        ),
-                      );
-                    } else {
-                      await semakTempahan(
-                        tempahan['id_tempahan'] is int
-                            ? tempahan['id_tempahan']
-                            : int.parse(tempahan['id_tempahan'].toString()),
-                        value,
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'lulus', child: Text('Lulus')),
-                    PopupMenuItem(value: 'tolak', child: Text('Tolak')),
-                    PopupMenuItem(
-                      value: 'bkp',
-                      child: Text('Panjangkan ke BKP'),
-                    ),
-                  ],
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          ButiranTempahanPenyelia(tempahan: tempahan),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        );
-
+        return _buildTempahanList();
       case 2:
+        return SejarahTempahanPage(idBahagian: widget.penyelia['id_bahagian']);
+      case 3:
         return ProfilPenggunaPage(user: widget.penyelia);
-
       default:
         return const Center(child: Text("Halaman tidak dijumpai"));
     }
@@ -390,9 +381,19 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(" Halaman Penyelia"),
+        title: const Text("Halaman Penyelia"),
         centerTitle: true,
         backgroundColor: Colors.blue.shade800,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _refreshCountdown = 300;
+              _refreshData();
+            },
+            tooltip: 'Refresh data',
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -411,6 +412,7 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
             icon: Icon(Icons.list_alt),
             label: 'Tempahan',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Sejarah'),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_circle),
             label: 'Profil',
@@ -425,146 +427,16 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
   }
 }
 
-class DialogLulus extends StatefulWidget {
-  final int idTempahan;
-  final int idBahagian;
-  final int idPengguna; // ✅ Tambah ini
-  final VoidCallback onSelesai;
-
-  const DialogLulus({
-    super.key,
-    required this.idTempahan,
-    required this.idBahagian,
-    required this.idPengguna, // ✅ Tambah ini
-    required this.onSelesai,
-  });
-
-  @override
-  State<DialogLulus> createState() => _DialogLulusState();
-}
-
-class _DialogLulusState extends State<DialogLulus> {
-  String? selectedPemandu;
-  String? selectedNoKenderaan;
-  List<dynamic> senaraiPemandu = [];
-  List<dynamic> senaraiKenderaan = [];
-
-  @override
-  void initState() {
-    super.initState();
-    fetchData();
-  }
-
-  Future<void> fetchData() async {
-    final resPemandu = await http.get(
-      Uri.parse(
-        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_pemandu.php?id_bahagian=${widget.idBahagian}',
-      ),
-    );
-
-    final resKenderaan = await http.get(
-      Uri.parse(
-        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_kenderaan.php?id_bahagian=${widget.idBahagian}',
-      ),
-    );
-
-    if (resPemandu.statusCode == 200 && resKenderaan.statusCode == 200) {
-      setState(() {
-        senaraiPemandu = jsonDecode(resPemandu.body)['senarai'] ?? [];
-        senaraiKenderaan = jsonDecode(resKenderaan.body)['senarai'] ?? [];
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal ambil data pemandu/kenderaan')),
-      );
-    }
-  }
-
-  Future<void> hantarKelulusan() async {
-    if (selectedPemandu == null || selectedNoKenderaan == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sila pilih pemandu dan no kenderaan')),
-      );
-      return;
-    }
-
-    final res = await http.post(
-      Uri.parse(
-        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/kemaskini_status.php',
-      ),
-      body: {
-        'id_tempahan': widget.idTempahan.toString(),
-        'status': '2', // atau 'lulus'
-        'id_pemandu': selectedPemandu!,
-        'id_kenderaan': selectedNoKenderaan!,
-        'id_pengguna': widget.idPengguna.toString(), // sama dengan PHP
-      },
-    );
-
-    if (res.statusCode == 200) {
-      Navigator.pop(context);
-      widget.onSelesai();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tempahan berjaya diluluskan')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Kelulusan Tempahan"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<String>(
-            value: selectedPemandu,
-            isExpanded: true,
-            hint: const Text("Pilih Pemandu"),
-            items: senaraiPemandu.map<DropdownMenuItem<String>>((p) {
-              return DropdownMenuItem<String>(
-                value: p['id_pengguna'].toString(),
-                child: Text(p['nama']),
-              );
-            }).toList(),
-            onChanged: (val) => setState(() => selectedPemandu = val),
-          ),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            value: selectedNoKenderaan,
-            isExpanded: true,
-            hint: const Text("Pilih No Kenderaan"),
-            items: senaraiKenderaan.map<DropdownMenuItem<String>>((k) {
-              return DropdownMenuItem<String>(
-                value: k['id_kenderaan'].toString(),
-                child: Text(k['no_siri_pendaftaran']),
-              );
-            }).toList(),
-            onChanged: (val) => setState(() => selectedNoKenderaan = val),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Batal"),
-        ),
-        ElevatedButton(onPressed: hantarKelulusan, child: const Text("Sahkan")),
-      ],
-    );
-  }
-}
-
-class _RingkasanPieChart extends StatefulWidget {
+class _RingkasanBarChart extends StatefulWidget {
   final int idBahagian;
 
-  const _RingkasanPieChart({super.key, required this.idBahagian});
+  const _RingkasanBarChart({super.key, required this.idBahagian});
 
   @override
-  State<_RingkasanPieChart> createState() => _RingkasanPieChartState();
+  State<_RingkasanBarChart> createState() => _RingkasanBarChartState();
 }
 
-class _RingkasanPieChartState extends State<_RingkasanPieChart> {
+class _RingkasanBarChartState extends State<_RingkasanBarChart> {
   Map<String, int> dataStatus = {};
   bool loading = true;
 
@@ -575,24 +447,34 @@ class _RingkasanPieChartState extends State<_RingkasanPieChart> {
   }
 
   Future<void> fetchRingkasan() async {
-    final response = await http.get(
-      Uri.parse(
-        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_ringkasan_status.php?id_bahagian=${widget.idBahagian}',
-      ),
-    );
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+              'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/get_ringkasan_status.php?id_bahagian=${widget.idBahagian}',
+            ),
+          )
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      final result = jsonDecode(response.body);
-      setState(() {
-        dataStatus = Map<String, int>.from(
-          result.map((key, value) => MapEntry(key, value as int)),
-        );
-        loading = false;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal ambil statistik carta pai')),
-      );
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+
+        // Filter hanya status Lulus dan Tolak
+        final filteredData = Map<String, int>.from(result)
+          ..removeWhere(
+            (key, value) => !['lulus', 'tolak'].contains(key.toLowerCase()),
+          );
+
+        setState(() {
+          dataStatus = filteredData;
+          loading = false;
+        });
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() => loading = false);
+      rethrow;
     }
   }
 
@@ -611,31 +493,103 @@ class _RingkasanPieChartState extends State<_RingkasanPieChart> {
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator());
 
-    int jumlah = dataStatus.values.fold(0, (a, b) => a + b);
-    if (jumlah == 0) return const Text("Tiada data untuk carta pai.");
+    if (dataStatus.isEmpty) {
+      return const Center(child: Text("Tiada data untuk carta bar."));
+    }
+
+    final maxValue = dataStatus.values.reduce((a, b) => a > b ? a : b);
+    final entries = dataStatus.entries.toList();
 
     return Column(
       children: [
         SizedBox(
           height: 200,
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 3,
-              centerSpaceRadius: 50,
-              sections: dataStatus.entries.map((entry) {
-                final warna = switch (entry.key.toLowerCase()) {
-                  'lulus' => Colors.green,
-                  'tolak' => Colors.red,
-                  'baru' => Colors.grey,
-                  'batal' => Colors.orange,
-                  'dipanjangkan ke bkp' => Colors.purple,
-                  _ => Colors.blueGrey,
-                };
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: maxValue.toDouble() * 1.2,
+              barTouchData: BarTouchData(
+                enabled: true,
+                touchTooltipData: BarTouchTooltipData(
+                  tooltipBgColor: Colors.grey.shade800,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final status = entries[groupIndex].key;
+                    final value = entries[groupIndex].value;
+                    final total = dataStatus.values.fold(0, (a, b) => a + b);
+                    final percentage = total > 0
+                        ? (value / total * 100).toStringAsFixed(1)
+                        : '0.0';
 
-                return PieChartSectionData(
-                  value: entry.value.toDouble(),
-                  color: warna,
-                  title: '${entry.value}', // contoh: "5"
+                    return BarTooltipItem(
+                      '$status\n$value ($percentage%)',
+                      const TextStyle(color: Colors.white),
+                    );
+                  },
+                ),
+              ),
+              titlesData: FlTitlesData(
+                show: true,
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (index >= 0 && index < entries.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            entries[index].key,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      }
+                      return const Text('');
+                    },
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      return Text(
+                        value.toInt().toString(),
+                        style: GoogleFonts.poppins(fontSize: 10),
+                      );
+                    },
+                    reservedSize: 40,
+                  ),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              gridData: const FlGridData(show: true),
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: const Color(0xff37434d), width: 1),
+              ),
+              barGroups: entries.asMap().entries.map((entry) {
+                final index = entry.key;
+                final data = entry.value;
+                final warna = _getStatusColor(data.key);
+
+                return BarChartGroupData(
+                  x: index,
+                  barRods: [
+                    BarChartRodData(
+                      toY: data.value.toDouble(),
+                      color: warna,
+                      width: 30,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ],
                 );
               }).toList(),
             ),
@@ -645,19 +599,23 @@ class _RingkasanPieChartState extends State<_RingkasanPieChart> {
         Wrap(
           spacing: 10,
           runSpacing: 10,
-          children: dataStatus.keys.map((status) {
-            final warna = switch (status.toLowerCase()) {
-              'lulus' => Colors.green,
-              'tolak' => Colors.red,
-              'baru' => Colors.grey,
-              'batal' => Colors.orange,
-              'dipanjangkan ke bkp' => Colors.purple,
-              _ => Colors.blueGrey,
-            };
-            return _legendWarna(warna, status);
+          children: dataStatus.entries.map((entry) {
+            final warna = _getStatusColor(entry.key);
+            return _legendWarna(warna, '${entry.key} (${entry.value})');
           }).toList(),
         ),
       ],
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'lulus':
+        return Colors.green;
+      case 'tolak':
+        return Colors.red;
+      default:
+        return Colors.blueGrey;
+    }
   }
 }

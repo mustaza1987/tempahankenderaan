@@ -31,7 +31,7 @@ class _SejarahTempahanPemanduState extends State<SejarahTempahanPemandu> {
 
   Future<List<Map<String, dynamic>>> _fetchSejarahTempahan() async {
     final url = Uri.parse(
-      'http://10.20.18.184/kenderaanALL/flutapi/sejarah_tempahan_pemandu.php',
+      'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/sejarah_tempahan_pemandu.php',
     );
 
     final response = await http.post(

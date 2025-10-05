@@ -5,10 +5,12 @@ import 'package:http/http.dart' as http;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
-import 'package:eMobilSUK/profil_pengguna.dart';
+
+import 'package:tempahkenderaan/profil_pengguna.dart';
 import 'sejarah_tempahan.dart';
 import 'tempah_kenderaan_page.dart';
-import 'package:eMobilSUK/papar_map.dart';
+
+import 'package:tempahkenderaan/papar_map.dart';
 import 'dart:ui';
 
 class PenggunaTempahanPage extends StatefulWidget {
@@ -235,6 +237,9 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
               pw.Text(
                 "Dicetak pada: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}",
               ),
+              pw.Text(
+                "Dicetak oleh: ${widget.user['nama']} (${widget.user['jawatan'] ?? ''})",
+              ),
             ],
           );
         },
@@ -456,20 +461,24 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
       body: SafeArea(child: pages[_selectedIndex]),
       floatingActionButton: _selectedIndex == 2
           ? null
-          : FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => TempahKenderaanPage(user: widget.user),
-                  ),
-                );
-              },
-              backgroundColor: Colors.blue,
-              elevation: 1,
-              shape: const CircleBorder(),
-              child: const Icon(Icons.car_crash_rounded, size: 35),
+          : Transform.translate(
+              offset: const Offset(0, 10), // ↓ turun 20px
+              child: FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TempahKenderaanPage(user: widget.user),
+                    ),
+                  );
+                },
+                backgroundColor: Colors.blue,
+                elevation: 1,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.add_rounded, size: 35),
+              ),
             ),
+
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _selectedIndex == 2
           ? null
@@ -488,7 +497,7 @@ class _PenggunaTempahanPageState extends State<PenggunaTempahanPage> {
                   children: [
                     _buildNavIcon(Icons.home, 'Utama', 0),
                     _buildNavIcon(Icons.history, 'Sejarah', 1),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 2),
                     _buildNavIcon(Icons.person, 'Profil', 3),
                     _buildNavIcon(Icons.logout, 'Keluar', 4),
                   ],

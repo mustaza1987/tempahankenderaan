@@ -65,7 +65,7 @@ class _ButiranTempahanPemanduState extends State<ButiranTempahanPemandu> {
 
     if (lat != null && lng != null) {
       final url = Uri.parse(
-        'http://10.20.18.184/kenderaanALL/flutapi/reverse_proxy.php?lat=$lat&lon=$lng',
+        'https://kenderaansuk.perak.gov.my/kenderaanALL/flutapi/reverse_proxy.php?lat=$lat&lon=$lng',
       );
       final res = await http.get(
         url,
@@ -120,7 +120,7 @@ class _ButiranTempahanPemanduState extends State<ButiranTempahanPemandu> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _buildRow(" NamaPemohon", namapemohon),
+          _buildRow(" Nama Pemohon", namapemohon),
           _buildRow("🚩 Destinasi", destinasi),
           if (lokasiPenuh != null)
             Container(
@@ -240,6 +240,7 @@ class _ButiranTempahanPemanduState extends State<ButiranTempahanPemandu> {
             ],
           ),
           pw.SizedBox(height: 20),
+          _pdfRow("Nama Pemohon", data['nama_pemohon']),
           _pdfRow("Destinasi", data['destinasi']),
           _pdfRow("Tujuan", data['tujuan']),
           _pdfRow("Tarikh Bertolak", formatTarikh(data['tarikh_bertolak'])),
@@ -273,6 +274,7 @@ class _ButiranTempahanPemanduState extends State<ButiranTempahanPemandu> {
   }
 
   void _shareToWhatsApp(BuildContext context, Map<String, dynamic> data) {
+    final namapemohon = data['nama_pemohon'] ?? '-';
     final destinasi = data['destinasi'] ?? '-';
     final tujuan = data['tujuan'] ?? '-';
     final tarikh = formatTarikh(data['tarikh_bertolak']);
@@ -282,6 +284,7 @@ class _ButiranTempahanPemanduState extends State<ButiranTempahanPemandu> {
         '''
 Tempahan Kenderaan 📄
 
+Nama Pemohon :$namapemohon
 Destinasi: $destinasi
 🚗 No.Kenderaan: $kenderaan
 🚩 Tujuan: $tujuan
