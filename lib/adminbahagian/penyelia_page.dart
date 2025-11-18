@@ -7,6 +7,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:tempahkenderaan/profil_pengguna.dart';
 import 'butiran_tempahan_penyelia.dart';
 import 'sejarah_tempahan_admin.dart';
+import 'borang_tempahan.dart';
+import 'borang_tempahan_page.dart';
 
 class PenyeliaPage extends StatefulWidget {
   final Map<String, dynamic> penyelia;
@@ -225,6 +227,87 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
     );
   }
 
+  Widget _buildmenuTempahanKhas() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BorangTempahanPageNew(
+              userData: {
+                'id_pengguna': widget.penyelia['id_pengguna'] ?? 0,
+                'id_bahagian': widget.penyelia['id_bahagian'] ?? 0,
+                'nama': widget.penyelia['nama'] ?? 'Penyelia',
+              },
+            ),
+          ),
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFA726), Color(0xFFFF7043)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Ikon animasi kereta
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.directions_car_filled_rounded,
+                color: Colors.white,
+                size: 36,
+              ),
+            ),
+            const SizedBox(width: 18),
+            // Teks kiri
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Permohonan Khas",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildNotificationCard(int jumlahBelum) {
     if (jumlahBelum <= 0) return const SizedBox();
 
@@ -275,6 +358,8 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
           _buildWelcomeCard(),
           const SizedBox(height: 20),
           _buildBahagianCard(),
+          const SizedBox(height: 20),
+          _buildmenuTempahanKhas(),
           const SizedBox(height: 20),
           _buildNotificationCard(jumlahBelum),
           const SizedBox(height: 20),
@@ -372,6 +457,7 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
         return SejarahTempahanPage(idBahagian: widget.penyelia['id_bahagian']);
       case 3:
         return ProfilPenggunaPage(user: widget.penyelia);
+
       default:
         return const Center(child: Text("Halaman tidak dijumpai"));
     }
@@ -417,6 +503,7 @@ class _PenyeliaPageState extends State<PenyeliaPage> {
             icon: Icon(Icons.account_circle),
             label: 'Profil',
           ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.logout),
             label: 'Log Keluar',
